@@ -1,0 +1,68 @@
+# Runtime dependencies are downloaded and verified by the installer.
+/helper/runtime/
+node_modules/
+*.exe
+*.dll
+*.msi
+*.msix
+*.appx
+*.pdb
+*.zip
+*.7z
+*.tar
+*.gz
+
+# Native messaging registration contains this PC's installation path.
+/helper/com.qingcun.youtube.json
+
+# Authentication and local credentials.
+.env
+.env.*
+*cookie*.txt
+*cookie*.json
+cookies/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Downloaded media and partial downloads.
+downloads/
+download/
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.avi
+*.mp3
+*.m4a
+*.aac
+*.opus
+*.ogg
+*.wav
+*.flac
+*.part
+*.ytdl
+
+# Personal history, reports, screenshots and temporary files.
+state.json
+state.json.tmp
+host.lock
+/data/
+/test-results/
+/lock-test-results/
+/work-install-*/
+/work/
+/.cache/
+/界面预览.png
+/验证结果.md
+*.log
+*.tmp
+
+# Operating system and editor metadata.
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/

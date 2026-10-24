@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "轻存 · YouTube 下载助手",
+  "description": "通过本地助手下载 YouTube 视频与音频，查看实际画质和下载进度。",
+  "version": "1.0.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "打开轻存下载助手"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4oBcMDLslsvT9YP07lRpFf2sfgqQa/29ZOEpkMRRKL2M6dLG4X13g5zskcPsPGi9kgvr3ROWTcF3uxOEj7gEFntGHkb6FIyPvkJumI5CuoMPYEXcOunr1bYFv0G+oNd3Md17BdHmw6A8MrgoJDnQ9SAaO/BTy0YWh18bw1+TbsbUfRMDdzvOZk5izlw2KHw1KvBfGofJQlZr6kUJKue999vdeyBjn6DcpNfM0yrnFgvY7atLttGWs49toJImfDsg0tVMJYJDcqhQFoQcXnw5CNfvTdX5+5QrmCVj5GSfve+ht5pGegbbHitURozo2g7lk3ATyUM9u3RQ8qJnnOJQwQIDAQAB"
+}
