@@ -29,6 +29,12 @@ async function until(predicate,timeout=180000){const start=Date.now();while(Date
     const job=latest.jobs.find(j=>j.id===jobId);report.downloads.push({kind,status:job.status,file:job.file,error:job.error});
     assert.equal(job.status,'completed',job.error);assert.ok(fs.statSync(job.file).size>1000);
    }
+   assert.ok((await request('download',{url,kind:'video',formatId:format.id})).error);
+   const completed=latest.jobs.find(j=>j.kind==='video' && j.status==='completed');
+   await call('deleteJob',{jobId:completed.id});assert.ok(fs.existsSync(completed.file));
+   assert.ok((await request('download',{url,kind:'video',formatId:format.id})).error);
+   report.checks.push('删除任务保留真实文件，仍拦截重复下载');
+   fs.unlinkSync(completed.file);
    const {jobId}=await call('download',{url,kind:'video',formatId:format.id});
    await call('cancel',{jobId});await until(()=>latest?.jobs.some(j=>j.id===jobId && j.status==='cancelled'));
    report.checks.push('真实任务取消通过');

@@ -36,6 +36,12 @@ function render(state) {
     if (['queued','downloading','processing'].includes(job.status)) action('取消','cancel');
     if (['failed','cancelled','interrupted'].includes(job.status)) action('重试','retry');
     if (job.status==='completed') action('打开文件夹','reveal');
+    const remove=document.createElement('button');remove.className='secondary';remove.textContent='删除任务';
+    remove.title='删除任务记录，保留已下载文件；正在下载的任务会停止。';
+    remove.onclick=()=>run(remove,async()=>{
+      if(['downloading','processing'].includes(job.status) && !window.confirm('删除后会停止当前下载，已下载的文件仍会保留。确定删除此任务吗？'))return;
+      render(await call('deleteJob',{jobId:job.id}));notice('任务已删除，已下载文件保留。');
+    });controls.append(remove);
     actions.append(controls);item.append(title,label,progress,actions);$('jobs').append(item);
   }
 }

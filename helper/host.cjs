@@ -12,11 +12,27 @@ const stateFile = path.join(DATA,'state.json');
 let saved = {};
 try { saved = JSON.parse(fs.readFileSync(stateFile,'utf8')); } catch {}
 const state = {
+  completedDownloads: saved.completedDownloads || [],
   settings: {folder:path.join(os.homedir(),'Downloads','轻存'),cookies:'',...saved.settings},
   jobs: (saved.jobs || []).slice(-100).map(job => ['queued','downloading','processing'].includes(job.status) ? {...job,status:'interrupted',error:'助手已关闭，请点击重试。'} : job)
 };
 let active, exiting=false, bytes=Buffer.alloc(0), lastEmit=0;
 const processes=new Set(), analyses=new Map();
+function rememberCompleted(job) {
+  if(job.status!=='completed' || !job.file)return;
+  const key=downloadKey(job);
+  state.completedDownloads=state.completedDownloads.filter(item=>downloadKey(item)!==key);
+  state.completedDownloads.push({url:job.url,kind:job.kind,formatId:job.formatId,file:job.file});
+}
+function downloadKey(job) { return JSON.stringify([job.url,job.kind,job.kind==='audio'?'':job.formatId]); }
+function rejectDuplicate(candidate, excludeId) {
+  const key=downloadKey(candidate);
+  if(state.jobs.some(job=>job.id!==excludeId && downloadKey(job)===key && ['queued','downloading','processing'].includes(job.status)))
+    throw new Error('相同视频和画质已在下载队列中，请勿重复添加。');
+  if([...state.jobs,...state.completedDownloads].some(job=>downloadKey(job)===key && job.file && fs.existsSync(job.file) && (!job.status || job.status==='completed')))
+    throw new Error('相同视频和画质已下载，文件仍在本机，无需重复下载。删除任务记录后也会保留此检查。');
+}
+state.jobs.forEach(rememberCompleted);
 const lockFile=path.join(DATA,'host.lock');
 let lockOwned=false;
 function send(message) {
@@ -120,6 +136,7 @@ function runQueue() {
     proc.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString()).slice(-6000);});
     const lines=readline.createInterface({input:proc.stdout,crlfDelay:Infinity});
     lines.on('line',line=>{
+      if(job.status==='cancelled')return;
       try{
         if(line.startsWith('QC_PROGRESS:')) {
           const p=JSON.parse(line.slice(12));job.speed=Number.isFinite(p.speed)?p.speed:null;job.eta=Number.isFinite(p.eta)?p.eta:null;
@@ -133,7 +150,7 @@ function runQueue() {
     proc.on('error',err=>{eventError=err.message;});
     proc.once('close',code=>{
       if(job.status!=='cancelled'){
-        if(code===0 && job.file && fs.existsSync(job.file)){job.status='completed';job.percent=100;}
+        if(code===0 && job.file && fs.existsSync(job.file)){job.status='completed';job.percent=100;rememberCompleted(job);}
         else{job.status='failed';job.error=friendly(eventError || stderr || '没有找到输出文件');}
       }
       job.speed=null;job.eta=null;active=null;publish();runQueue();
@@ -160,6 +177,7 @@ async function handle(command,data) {
       if(!['video','audio'].includes(data.kind))throw new Error('下载类型无效');
       const format=entry.result.formats.find(item=>item.id===data.formatId);
       if(data.kind==='video' && !format)throw new Error('请选择实际可用的画质');
+      rejectDuplicate({url,kind:data.kind,formatId:format?.id || ''});
       if(state.jobs.filter(j=>['queued','downloading','processing'].includes(j.status)).length>=20)throw new Error('队列最多容纳 20 个任务');
       while(state.jobs.length>=100){const index=state.jobs.findIndex(j=>!['queued','downloading','processing'].includes(j.status));if(index<0)break;state.jobs.splice(index,1);}
       const job={id:crypto.randomUUID(),url,title:entry.result.title,kind:data.kind,formatId:format?.id || '',hasAudio:format?.hasAudio || false,label:format?.label || 'MP3 音频',folder:state.settings.folder,settings:{...state.settings},status:'queued',createdAt:new Date().toISOString()};
@@ -174,7 +192,15 @@ async function handle(command,data) {
       const job=state.jobs.find(item=>item.id===data.jobId);
       if(!job || !['failed','cancelled','interrupted'].includes(job.status))throw new Error('该任务无法重试');
       if(active?.job===job)throw new Error('正在停止上一次下载，请稍后再试。');
+      rejectDuplicate(job,job.id);
       job.status='queued';job.error='';job.percent=null;job.file=null;job.settings={...state.settings};publish();runQueue();return state;
+    }
+    case 'deleteJob':{
+      const index=state.jobs.findIndex(item=>item.id===data.jobId);
+      if(index<0)throw new Error('任务不存在，可能已被删除。');
+      const job=state.jobs[index];rememberCompleted(job);
+      if(active?.job===job){job.status='cancelled';job.speed=null;job.eta=null;stop(active.proc);}
+      state.jobs.splice(index,1);publish();runQueue();return state;
     }
     case 'reveal':{
       const job=state.jobs.find(item=>item.id===data.jobId);
@@ -210,7 +236,9 @@ function acquireLock() { try {
   try {
     const current=JSON.parse(fs.readFileSync(stateFile,'utf8'));
     state.settings={...state.settings,...current.settings};
+    state.completedDownloads=current.completedDownloads || [];
     state.jobs=(current.jobs || []).slice(-100).map(job=>['queued','downloading','processing'].includes(job.status)?{...job,status:'interrupted',error:'助手已关闭，请点击重试。'}:job);
+    state.jobs.forEach(rememberCompleted);
   }catch{}
 }catch{} }
 acquireLock();

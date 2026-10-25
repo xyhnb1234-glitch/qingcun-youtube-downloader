@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "轻存 · YouTube 下载助手",
   "description": "通过本地助手下载 YouTube 视频与音频，查看实际画质和下载进度。",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "permissions": [
     "activeTab",
     "storage",
